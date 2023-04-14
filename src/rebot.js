@@ -6,7 +6,7 @@ import  { roleConfig, generateRoleListText } from './role.js'
 import { openaiChat } from './openai.js'
 
 // 申请信息token
-const applyToken = crypto.randomBytes(16).toString('hex')
+let applyToken = crypto.randomBytes(16).toString('hex')
 
 // 聊天上下文存储
 const userDB = {}
@@ -180,14 +180,18 @@ const rebotFriendship = async (friendship) => {
 
 // 每小时定时更新token
 setInterval(() => {
-  // 生成0-60内随机数
-  const bytes = crypto.randomBytes(4)
-  const range = 60 - 0
-  const delay = bytes.readUInt32BE(0) % range + 0
-  setTimeout(() => {
-    applyToken = crypto.randomBytes(16).toString('hex')
-    // TODO 发送最新applyToken
-  }, delay * 1000)
+  try {
+    // 生成0-60内随机数
+    const bytes = crypto.randomBytes(4)
+    const range = 60 - 0
+    const delay = bytes.readUInt32BE(0) % range + 0
+    setTimeout(() => {
+      applyToken = crypto.randomBytes(16).toString('hex')
+      // TODO 发送最新applyToken
+    }, delay * 1000)
+  } catch(e) {
+    console.log(`Token更新发生未知错误：${e.toString()}`)
+  }
 }, 3600*1000)
 
 export { rebotChat, rebotFriendship, storeDB, userDB, initDB }
