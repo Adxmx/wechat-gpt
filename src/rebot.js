@@ -43,16 +43,22 @@ const customDB = (key, roleId) => {
 
 // 判断是是否回复消息
 const isReplay = (talker, messageType, rawText) => {
-  const whistList = ['微信团队', '朋友推荐消息']
-  if (whistList.indexOf(talker.name) > -1) {
-    return false
+  const talkerWhistList = ['微信团队', '朋友推荐消息']
+  for (let index in talkerWhistList) {
+    if (talker.name().includes(talkerWhistList[index])) {
+      return false
+    }
+  }
+  const textWhistList = ['开始聊天了。', '请在手机上查看']
+  for (let index in textWhistList) {
+    if (rawText.includes(textWhistList[index])) {
+      return false
+    }
   }
   if (messageType !== Message.Text ) {
     return false
   }
-  if (rawText.includes("请在手机上查看")) {
-    return false
-  }
+  return true
 }
 
 // 解析命令
@@ -77,7 +83,7 @@ const cmdParse = async (cmd, talkerId, wechaty) => {
       tooptip = `以下是角色列表:
 ${generateRoleListText()}
 输入指令，${REBOT_CONFIG.REBOT_NAME}将进入角色扮演模式。
-例如：/cmd role 1 进入将进入猫娘角色扮演模式`
+例如：/cmd role 12 进入将进入猫娘角色扮演模式`
     } else {
       const roleId = cmd.slice(5)
       if (!roleId in roleConfig) {
@@ -103,7 +109,7 @@ const rebotChat = async (message, wechaty) => {
   // 群聊则返回群，私聊返回null
   const room = message.room()
   // 判断是否回复
-  if (!isReplay) {
+  if (!isReplay(talker, messageType, rawText)) {
     return
   }
   // 群聊 or 私聊
@@ -114,6 +120,7 @@ const rebotChat = async (message, wechaty) => {
     initDB(room.id)
     // 判断是否提及自己
     if (await message.mentionSelf()) {
+      rawText = rawText.replace(' ', ' ')
       rawText = rawText.substring(rawText.indexOf(' ') + 1)
       // 判断指令
       if (rawText.includes('/cmd ')) {
@@ -157,14 +164,21 @@ const rebotChat = async (message, wechaty) => {
 const rebotFriendship = async (friendship) => {
   const friendshipType = friendship.type()
   // 获取验证信息
+  const contact = friendship.contact()
   const applyInfo = friendship.hello()
-  if (friendshipType === Friendship.Receive && applyInfo.includes(applyToken)) {
-    await friendship.accept()
+  console.log(contact.name(), "===APPLY===", applyInfo, "===RESULT===", applyInfo.includes(applyToken))
+  try{
+    if (friendshipType === Friendship.Receive && applyInfo.includes(applyToken)) {
+      await friendship.accept()
+      await contact.say(REBOT_CONFIG.REBOT_PROLOGUE)
+    }
+  } catch (e) {
+    console.log(`添加好友发生未知错误：${e.toString()}`)
   }
 }
 
 
-// 每天定时更新token
+// 每小时定时更新token
 setInterval(() => {
   // 生成0-60内随机数
   const bytes = crypto.randomBytes(4)
@@ -174,6 +188,6 @@ setInterval(() => {
     applyToken = crypto.randomBytes(16).toString('hex')
     // TODO 发送最新applyToken
   }, delay * 1000)
-}, 86400*1000)
+}, 3600*1000)
 
 export { rebotChat, rebotFriendship, storeDB, userDB, initDB }
